@@ -16,7 +16,7 @@ import pandas as pd
 sys.path.insert(0, os.path.dirname(__file__))
 logging.basicConfig(level=logging.WARNING)
 
-from config import RAW_DIR, PROCESSED_DIR, MODEL_DIR
+from config import RAW_DIR, PROCESSED_DIR, MODEL_DIR, FIGHTERS_CSV
 from features.feature_engineering import build_training_dataset, ALL_FEATURE_COLS
 from model.train import train
 
@@ -49,6 +49,15 @@ REAL_FIGHTERS = [
     ("Tom Aspinall",     5.8, 0.56, 3.8, 0.60, 2.0, 0.67, 0.80, 1.4, 196, 208, "Orthodox",  31, 14, 3),
     ("Islam Makhachev",  4.3, 0.51, 2.6, 0.67, 4.7, 0.47, 0.87, 1.2, 175, 178, "Orthodox",  32, 25, 1),
     ("Sean Strickland",  8.0, 0.49, 6.0, 0.53, 1.0, 0.43, 0.60, 0.3, 185, 193, "Orthodox",  32, 28, 6),
+    ("Ilia Topuria",     6.4, 0.58, 3.8, 0.64, 1.2, 0.50, 0.82, 1.8, 170, 175, "Orthodox",  27, 16, 0),
+    ("Arman Tsarukyan",  5.8, 0.51, 3.9, 0.59, 4.1, 0.45, 0.72, 0.7, 170, 175, "Orthodox",  27, 21, 3),
+    ("Paddy Pimblett",   5.2, 0.50, 5.1, 0.48, 2.0, 0.44, 0.62, 1.5, 175, 178, "Orthodox",  29, 21, 3),
+    ("Dricus Du Plessis", 6.1, 0.52, 5.3, 0.54, 1.4, 0.48, 0.68, 0.8, 185, 193, "Orthodox", 30, 22, 2),
+    ("Merab Dvalishvili", 7.2, 0.46, 5.6, 0.51, 7.5, 0.44, 0.67, 0.5, 168, 170, "Orthodox", 33, 17, 4),
+    ("Shavkat Rakhmonov", 5.6, 0.56, 2.9, 0.64, 2.1, 0.61, 0.81, 1.2, 185, 193, "Orthodox", 29, 18, 0),
+    ("Bo Nickal",        4.8, 0.55, 3.2, 0.60, 6.2, 0.70, 0.85, 1.4, 185, 188, "Orthodox", 27, 7, 0),
+    ("Brendan Allen",    5.5, 0.51, 4.8, 0.54, 2.8, 0.52, 0.70, 1.6, 183, 190, "Orthodox", 28, 26, 5),
+    ("Umar Nurmagomedov", 5.0, 0.52, 2.8, 0.66, 4.2, 0.50, 0.84, 0.9, 173, 178, "Orthodox", 27, 17, 0),
 ]
 
 
@@ -156,6 +165,9 @@ def run_demo():
 
     print(f"  {len(fighters_df)} fighters, {len(fights_df)} fights generated")
 
+    # Save fighters to disk so 'python main.py predict' can find them
+    fighters_df.to_csv(FIGHTERS_CSV, index=False)
+
     print("\nTraining XGBoost model...")
     train(fighters_df, fights_df)
 
@@ -164,15 +176,18 @@ def run_demo():
     from main import _print_prediction
 
     matchups = [
-        ("Jon Jones", "Stipe Miocic"),
+        ("Ilia Topuria", "Arman Tsarukyan"),
         ("Islam Makhachev", "Dustin Poirier"),
         ("Alex Pereira", "Israel Adesanya"),
-        ("Valentina Shevchenko", "Amanda Nunes"),
+        ("Jon Jones", "Tom Aspinall"),
     ]
 
     for a, b in matchups:
         result = predict_matchup(a, b, fighters_df=fighters_df, fetch_news=False)
         _print_prediction(result)
+
+    print("Done! You can now run any matchup:")
+    print('  python main.py predict "Ilia Topuria" "Arman Tsarukyan"')
 
 
 if __name__ == "__main__":
