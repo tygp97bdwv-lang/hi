@@ -56,7 +56,6 @@ def train(fighters_df: pd.DataFrame = None, fights_df: pd.DataFrame = None) -> X
         learning_rate=0.05,
         subsample=0.8,
         colsample_bytree=0.8,
-        use_label_encoder=False,
         eval_metric="logloss",
         random_state=42,
         n_jobs=-1,
