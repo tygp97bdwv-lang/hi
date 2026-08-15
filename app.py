@@ -8,7 +8,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 
 from config import FIGHTERS_CSV, MODEL_PATH
 
-# ── Page config ────────────────────────────────────────────────────────────────
+# ── Page config ──────────────────────────────────────────────────────────────────────────────
 st.set_page_config(
     page_title="UFC Fight Predictor",
     page_icon="🥊",
@@ -16,7 +16,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-# ── CSS ────────────────────────────────────────────────────────────────────────
+# ── CSS ──────────────────────────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Rajdhani:wght@400;600;700&display=swap');
@@ -253,7 +253,7 @@ html, body, [class*="css"] {
 """, unsafe_allow_html=True)
 
 
-# ── Helpers ────────────────────────────────────────────────────────────────────
+# ── Helpers ──────────────────────────────────────────────────────────────────────────────
 
 @st.cache_data
 def load_fighters() -> pd.DataFrame:
@@ -411,26 +411,38 @@ def fighter_card_html(f: pd.Series, color: str) -> str:
 </div>"""
 
 
-# ── Main app ───────────────────────────────────────────────────────────────────
+# ── Main app ──────────────────────────────────────────────────────────────────────────────
 
 st.markdown('<div class="ufc-title">🥊 UFC FIGHT PREDICTOR</div>', unsafe_allow_html=True)
 st.markdown('<div class="ufc-subtitle">AI-Powered Matchup Analysis</div>', unsafe_allow_html=True)
 st.markdown("<br>", unsafe_allow_html=True)
 
-# ── Setup check ───────────────────────────────────────────────────────────────
+# ── Setup check ─────────────────────────────────────────────────────────────────────────────
 fighters_df = load_fighters()
 
-if fighters_df.empty:
-    st.error("⚠️  No fighter data found. Open CMD, go to your `hi` folder, and run:  `python demo.py`")
-    st.stop()
-
-if not model_ready():
-    st.error("⚠️  Model not trained yet. Open CMD, go to your `hi` folder, and run:  `python demo.py`")
+if fighters_df.empty or not model_ready():
+    st.warning("⚠️  Fighter data or trained model not found.")
+    st.info("Click **Generate Demo Data** to set everything up automatically (takes ~15 seconds).")
+    if st.button("🚀 Generate Demo Data & Train Model"):
+        with st.spinner("Setting up — generating fighters, fights, and training the model..."):
+            import subprocess
+            _script = os.path.join(os.path.dirname(os.path.abspath(__file__)), "demo.py")
+            _proc = subprocess.run(
+                [sys.executable, _script],
+                capture_output=True, text=True,
+                cwd=os.path.dirname(os.path.abspath(__file__)),
+            )
+            if _proc.returncode == 0:
+                st.cache_data.clear()
+                st.success("Done! Reloading…")
+                st.rerun()
+            else:
+                st.error(f"Setup failed:\n```\n{_proc.stderr[-2000:]}\n```")
     st.stop()
 
 fighter_names = fighters_df["name"].tolist()
 
-# ── Fighter selectors ─────────────────────────────────────────────────────────
+# ── Fighter selectors ───────────────────────────────────────────────────────────────────────────
 col_l, col_vs, col_r = st.columns([5, 1, 5])
 
 with col_l:
@@ -451,7 +463,7 @@ with col_r:
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# ── Fighter cards ─────────────────────────────────────────────────────────────
+# ── Fighter cards ──────────────────────────────────────────────────────────────────────────────
 f1 = fighters_df[fighters_df["name"] == sel_a].iloc[0]
 f2 = fighters_df[fighters_df["name"] == sel_b].iloc[0]
 
@@ -463,12 +475,12 @@ with col_card_r:
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# ── Predict button ─────────────────────────────────────────────────────────────
+# ── Predict button ──────────────────────────────────────────────────────────────────────────────
 _, btn_col, _ = st.columns([2, 3, 2])
 with btn_col:
     predict_clicked = st.button("⚡  PREDICT FIGHT OUTCOME")
 
-# ── Results ────────────────────────────────────────────────────────────────────
+# ── Results ──────────────────────────────────────────────────────────────────────────────────
 if predict_clicked:
     if sel_a == sel_b:
         st.warning("Select two different fighters.")
@@ -499,12 +511,19 @@ if predict_clicked:
 
     st.markdown('<div class="section-header">STAT BREAKDOWN</div>', unsafe_allow_html=True)
     chart_l, chart_r = st.columns(2)
+    _plotly_cfg = {"displayModeBar": False}
     with chart_l:
-        st.markdown("**Radar comparison**", help="Normalised 0-1 scale per category")
-        st.plotly_chart(radar_chart(f1, f2, sel_a, sel_b), use_container_width=True, config={"displayModeBar": False})
+        st.markdown("**Radar comparison** *(normalised 0–1 per category)*")
+        try:
+            st.plotly_chart(radar_chart(f1, f2, sel_a, sel_b), use_container_width=True, config=_plotly_cfg)
+        except TypeError:
+            st.plotly_chart(radar_chart(f1, f2, sel_a, sel_b), use_container_width=True)
     with chart_r:
         st.markdown("**Key stats head-to-head**")
-        st.plotly_chart(bar_chart(f1, f2, sel_a, sel_b), use_container_width=True, config={"displayModeBar": False})
+        try:
+            st.plotly_chart(bar_chart(f1, f2, sel_a, sel_b), use_container_width=True, config=_plotly_cfg)
+        except TypeError:
+            st.plotly_chart(bar_chart(f1, f2, sel_a, sel_b), use_container_width=True)
 
     # Detailed stat table
     st.markdown('<div class="section-header">DETAILED STATS</div>', unsafe_allow_html=True)
