@@ -153,6 +153,47 @@ def _print_prediction(result: dict):
     print(f"{'='*60}\n")
 
 
+def cmd_simulate(args):
+    if len(args) < 2:
+        print(f"{Fore.RED}Usage: python main.py simulate \"Fighter A\" \"Fighter B\"")
+        sys.exit(1)
+
+    from model.predict import predict_matchup
+    from model.simulate import simulate_fight
+
+    fighter_a, fighter_b = args[0], args[1]
+
+    fighters_df = None
+    if os.path.exists(FIGHTERS_CSV):
+        fighters_df = pd.read_csv(FIGHTERS_CSV)
+
+    print(f"\n{Fore.CYAN}Simulating: {fighter_a} vs {fighter_b}...\n")
+    result = predict_matchup(fighter_a, fighter_b, fighters_df=fighters_df, fetch_news=False)
+
+    from scrapers.ufc_stats_scraper import search_fighter
+    f1 = search_fighter(fighter_a, fighters_df) if fighters_df is not None else None
+    f2 = search_fighter(fighter_b, fighters_df) if fighters_df is not None else None
+    if f1 is None or f2 is None:
+        print(f"{Fore.RED}One or both fighters not found in cache. Run 'python main.py scrape' first.")
+        sys.exit(1)
+
+    sim = simulate_fight(f1, f2, prob_a_wins=result["prob_a_wins"])
+
+    for rnd_log in sim["log"]:
+        print(f"{Style.BRIGHT}{Fore.YELLOW}{rnd_log['events'][0]}")
+        for line in rnd_log["events"][1:]:
+            print(f"  {line}")
+        print()
+
+    print(f"{'='*60}")
+    if sim["method"] == "Decision":
+        print(f"  {Style.BRIGHT}{Fore.GREEN}{sim['winner']} wins by {sim['method']}")
+    else:
+        print(f"  {Style.BRIGHT}{Fore.GREEN}{sim['winner']} wins by {sim['method']} "
+              f"(Round {sim['finish_round']})")
+    print(f"{'='*60}\n")
+
+
 def cmd_news(args):
     if not args:
         print(f"{Fore.RED}Usage: python main.py news \"Fighter Name\"")
@@ -193,6 +234,7 @@ COMMANDS = {
     "scrape": cmd_scrape,
     "train": cmd_train,
     "predict": cmd_predict,
+    "simulate": cmd_simulate,
     "news": cmd_news,
     "info": cmd_info,
 }
@@ -204,6 +246,7 @@ Commands:
   scrape [limit]            Scrape UFC fighter profiles and fight history
   train                     Train the XGBoost prediction model
   predict "A" "B"           Predict outcome of fighter A vs fighter B
+  simulate "A" "B"          Play out a round-by-round fight simulation
   news "Fighter Name"       Show recent news for a fighter
   info "Fighter Name"       Show cached stats for a fighter
 
@@ -212,6 +255,7 @@ Quick start:
   2. python main.py scrape
   3. python main.py train
   4. python main.py predict "Jon Jones" "Ciryl Gane"
+  5. python main.py simulate "Jon Jones" "Ciryl Gane"
 """
 
 
