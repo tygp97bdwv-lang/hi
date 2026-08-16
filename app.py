@@ -249,6 +249,53 @@ html, body, [class*="css"] {
     font-family: 'Rajdhani', sans-serif !important;
     font-size: 1.1rem !important;
 }
+
+/* Simulate button (secondary style) */
+div[data-testid="column"] .stButton > button[kind="secondary"] {
+    background: linear-gradient(135deg, #1a1a1a, #0a0a0a) !important;
+    color: #d4af37 !important;
+    border: 1px solid #d4af3766 !important;
+    box-shadow: none !important;
+}
+
+/* Round card */
+.round-card {
+    background: linear-gradient(145deg, #0f0f0f, #0a0a0a);
+    border: 1px solid #2a2a2a;
+    border-left: 3px solid #d4af37;
+    border-radius: 8px;
+    padding: 14px 18px;
+    margin: 10px 0;
+}
+.round-title {
+    font-family: 'Bebas Neue', sans-serif;
+    letter-spacing: 3px;
+    color: #d4af37;
+    font-size: 1.2rem;
+    margin-bottom: 6px;
+}
+.round-event {
+    color: #ccc;
+    font-size: 0.95rem;
+    padding: 3px 0;
+    border-bottom: 1px solid #1a1a1a;
+}
+.round-event:last-child { border-bottom: none; }
+.finish-banner {
+    text-align: center;
+    padding: 24px;
+    border-radius: 16px;
+    margin: 16px 0;
+    background: linear-gradient(135deg, #1a1400, #0f0f0f);
+    border: 1px solid #d4af3766;
+    box-shadow: 0 0 40px #d4af3733;
+}
+.finish-method {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 2.2rem;
+    letter-spacing: 3px;
+    color: #d4af37;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -463,10 +510,12 @@ with col_card_r:
 
 st.markdown("<br>", unsafe_allow_html=True)
 
-# ── Predict button ─────────────────────────────────────────────────────────────
-_, btn_col, _ = st.columns([2, 3, 2])
-with btn_col:
+# ── Predict / Simulate buttons ───────────────────────────────────────────────
+_, btn_col_l, btn_col_r, _ = st.columns([2, 3, 3, 2])
+with btn_col_l:
     predict_clicked = st.button("⚡  PREDICT FIGHT OUTCOME")
+with btn_col_r:
+    simulate_clicked = st.button("🎙️  SIMULATE THE FIGHT", type="secondary")
 
 # ── Results ────────────────────────────────────────────────────────────────────
 if predict_clicked:
@@ -564,5 +613,42 @@ if predict_clicked:
 
     st.markdown('<div class="section-header">RISK FLAGS</div>', unsafe_allow_html=True)
     st.markdown(" ".join(flags), unsafe_allow_html=True)
+
+    st.markdown("<br>", unsafe_allow_html=True)
+
+# ── Fight simulation ─────────────────────────────────────────────────────────
+if simulate_clicked:
+    if sel_a == sel_b:
+        st.warning("Select two different fighters.")
+        st.stop()
+
+    with st.spinner("Fight is underway..."):
+        from model.predict import predict_matchup
+        from model.simulate import simulate_fight
+        pred = predict_matchup(sel_a, sel_b, fighters_df=fighters_df, fetch_news=False)
+        sim = simulate_fight(f1, f2, prob_a_wins=pred["prob_a_wins"])
+
+    st.markdown('<div class="section-header">🎙️ ROUND-BY-ROUND</div>', unsafe_allow_html=True)
+
+    for rnd_log in sim["log"]:
+        events_html = "".join(
+            f'<div class="round-event">{e}</div>' for e in rnd_log["events"][1:]
+        )
+        st.markdown(f"""
+<div class="round-card">
+  <div class="round-title">{rnd_log['events'][0].strip('— ')}</div>
+  {events_html}
+</div>""", unsafe_allow_html=True)
+
+    method_label = (
+        f"by {sim['method']} — Round {sim['finish_round']}"
+        if sim["method"] != "Decision" else "by Decision"
+    )
+    st.markdown(f"""
+<div class="finish-banner">
+  <div class="winner-label">FIGHT RESULT</div>
+  <div class="winner-name">{sim['winner']}</div>
+  <div class="finish-method">{method_label}</div>
+</div>""", unsafe_allow_html=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
